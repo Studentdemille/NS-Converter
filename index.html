@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NS Converter">
+<meta name="theme-color" content="#f2c200">
+<title>NS Field Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a field tool, calm and exact
+   IDEA the yellow waterproof surveyor's field book: yellow cover, ruled white pages, black ink, red margin rule
+   PICTURE the live coordinate readout, large, plus a zone ruler showing where the point sits among MTM/UTM zones
+   COLOUR field-book yellow, ink black, white page, red margin rule for errors; night: ink page with yellow
+   TYPE Barlow Semi Condensed for figures and labels + Barlow text
+   LAYOUT laptop: inputs left, readout right, ruler under both; phone: inputs, readout (sticky), ruler, tables */
+:root{--cond:"Barlow Semi Condensed",Barlow,system-ui,sans-serif;color-scheme:light dark;--bg:light-dark(#ffffff,#15140f);--ink:light-dark(#16140f,#f3efe2);--soft:light-dark(#5d584b,#b9b3a2);--y:light-dark(#f2c200,#e3b600);--yi:#16140f;--line:light-dark(#d9d4c6,#3a372e);--rule:light-dark(#9fb7dc,#34465f);--red:light-dark(#c42a1c,#ff7a6b);--amber:light-dark(#8a5a00,#ffc85c);--ok:light-dark(#2d6a1f,#9ad987);--panel:light-dark(#ffffff,#1d1c16)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,.fig-n,.lab,button,select,label,summary,th,.fig-l,.sub b,.read .sys{font-family:var(--cond)}
+.top{background:var(--y);color:var(--yi);padding:18px max(4vw,16px) 16px}
+.top h1{margin:0;font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.01em;font-weight:700}
+.top p{margin:4px 0 0;font-size:15px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 max(4vw,16px)}
+.conv{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;margin-top:-1px;padding-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.inputs{display:grid;gap:12px;align-content:start}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:end}
+label{display:block;font-size:14px;font-weight:600;color:var(--soft);margin-bottom:4px}
+input,select{width:100%;font:16px/1.2 Barlow,system-ui,sans-serif;padding:11px 12px;min-height:46px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+input{font-variant-numeric:tabular-nums}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--y);outline-offset:1px;border-color:var(--ink)}
+button{font-size:15px;font-weight:600;min-height:44px;padding:8px 14px;border-radius:8px;border:1.5px solid var(--ink);background:var(--bg);color:var(--ink);cursor:pointer}
+button:active{transform:translateY(1px)}
+button.prim{background:var(--ink);color:var(--bg)}
+.swap{width:46px;padding:0;font-size:20px}
+.hint{font-size:13px;color:var(--soft);margin:2px 0 0}
+.read{position:relative;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:16px 16px 14px 22px}
+.read .sys{font-size:15px;border-bottom:1px solid var(--rule);padding-bottom:8px;font-weight:600;color:var(--soft);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.figs{display:grid;gap:2px;margin:10px 0 6px}
+.fig-l{font-size:14px;color:var(--soft);font-weight:600;margin-top:4px}
+.fig-n{font-size:clamp(30px,6.4vw,50px);font-weight:700;line-height:1.08;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap;overflow-wrap:anywhere}
+.fig-n.sm{font-size:clamp(24px,4.6vw,36px)}
+.sub{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5em,1fr));gap:8px 16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.sub div{font-variant-numeric:tabular-nums}
+.sub b{display:block;font-size:13px;font-weight:600;color:var(--soft)}
+.msgs{display:grid;gap:6px;margin-top:12px}
+.msg{font-size:15px;padding:8px 10px;border-radius:7px;border:1px solid var(--line)}
+.msg.ok{color:var(--ok)}.msg.w{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}.msg.x{color:var(--red);border-color:var(--red);font-weight:600}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.toast{font-size:14px;color:var(--ok);align-self:center}
+h2{font-size:24px;line-height:1.1;margin:30px 0 10px;font-weight:700}
+.fig{position:relative;height:176px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+svg text{font-family:var(--cond);font-size:13px;fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:4px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:14px;color:var(--soft);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+td.cur{background:color-mix(in srgb,var(--y) 28%,transparent)}
+tr.cur td{font-weight:600}
+td .mini{min-height:34px;padding:2px 10px;font-size:14px}
+.saved{display:grid;gap:8px}
+.pt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.pt small{display:block;color:var(--soft);font-variant-numeric:tabular-nums}
+.empty{color:var(--soft);font-size:15px}
+details{border-top:1px solid var(--line);margin-top:28px;padding:12px 0}
+summary{cursor:pointer;font-size:18px;font-weight:700}
+details p,details li{font-size:15px;max-width:72ch}
+footer{padding:20px 0 40px;color:var(--soft);font-size:13px}
+@media(max-width:760px){.conv{grid-template-columns:minmax(0,1fr)}.read{position:sticky;top:0;z-index:2;box-shadow:0 6px 14px -10px rgba(0,0,0,.4)}.read .sub{display:none}.read.open .sub{display:grid}}
+@media(max-width:600px){table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:2px 12px;padding-block:10px;border-bottom:1px solid var(--line);align-items:center}.stack td{display:block;border:0;padding:0;white-space:nowrap;text-align:left}.stack td.nm{grid-column:1/3;font-weight:600}.stack td.bt{grid-row:1/4;grid-column:3}.stack td::before{content:attr(data-l);display:block;color:var(--soft);font-family:var(--cond);font-size:12px}.stack td.nm::before,.stack td.bt::before{display:none}.stack td.sf{display:none}.stack td:empty{display:none}}
+.m-only{display:none}
+@media(max-width:760px){.m-only{display:inline-block}}
+@media(prefers-reduced-motion:no-preference){.fig-n{transition:color .2s}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap" style="padding:0">
+<h1>NS Field Converter</h1>
+<p>NAD83(CSRS) NS 2010 and ATS77 · MTM 4/5 · UTM 19/20 · latitude/longitude</p>
+</div></header>
+
+<main class="wrap">
+<section class="conv">
+  <div class="card inputs">
+    <div><label for="name">Point (optional)</label><input id="name" autocomplete="off" placeholder="e.g. 27005"></div>
+    <div class="row2">
+      <div><label for="from">From</label><select id="from"></select></div>
+      <button class="swap" id="swap" title="Swap From and To" aria-label="Swap From and To">⇄</button>
+      <div><label for="to">To</label><select id="to"></select></div>
+    </div>
+    <div><label for="v1" id="l1">Northing (m)</label><input id="v1" autocomplete="off"></div>
+    <div><label for="v2" id="l2">Easting (m)</label><input id="v2" autocomplete="off"></div>
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <div class="read" id="read" aria-live="polite">
+    <div class="sys"><span id="rsys"></span><span id="rdat"></span></div>
+    <div class="figs" id="figs"></div>
+    <div class="sub" id="sub"></div>
+    <div class="msgs" id="msgs"></div>
+    <div class="acts">
+      <button class="prim" id="copy">Copy result</button>
+      <button id="save">Save point</button>
+      <button id="more" class="m-only">Details</button>
+      <span class="toast" id="toast"></span>
+    </div>
+  </div>
+</section>
+
+<h2>Where the point sits</h2>
+<div class="fig" id="ruler"><svg id="rs" role="img" aria-label="Zone ruler showing the point's longitude against MTM and UTM zones"></svg></div>
+
+<h2>The same point in every system</h2>
+<div class="scroll"><table class="stack" id="all"><thead><tr><th>System</th><th>Northing</th><th>Easting</th><th>Latitude</th><th>Longitude</th><th>Scale factor</th><th></th></tr></thead><tbody></tbody></table></div>
+
+<h2>ATS77 grid file</h2>
+<div class="card gridc"><p id="gstat" class="hint" style="margin:0 0 10px;font-size:15px"></p>
+<label for="gfile">Load NS778302.GSB (once – it stays on this device)</label><input id="gfile" type="file" accept=".gsb,.GSB,application/octet-stream"></div>
+
+<h2>Saved points</h2>
+<div class="saved" id="saved"></div>
+<div class="acts"><button id="csv">Copy all as CSV</button><button id="clear">Clear saved points</button></div>
+
+<details>
+<summary>How it works and limits</summary>
+<ul>
+<li>Grid ↔ latitude/longitude uses the Krüger series to 6th order (as in PROJ), accurate to well under a millimetre anywhere in Nova Scotia. The NS converter workbook uses shorter series and agrees within about 1–2.5 mm.</li>
+<li>ATS77 ↔ NAD83(CSRS) v6, epoch 2010 uses the Province's NTv2 grid NS778302.GSB (EPSG:9106) with bilinear interpolation – built in, or loaded once from your device. The grid's own accuracy is decimetre level (metre level in places) – fine for mapping and relocating evidence, not a replacement for a new NAD83(CSRS) tie. The grid is licensed: share this app only as the licence allows.</li>
+<li>No height or epoch change is applied. Latitude/longitude are on the datum shown.</li>
+<li>Input: decimal degrees or DMS (44 53 13.81, 44°53′13.81″N, 44:53:13.81). Longitude is West unless it contains E; positive numbers are read as West. MTM eastings include the 25… / 24… (NS 2010) or 5… / 4… (ATS77) prefix.</li>
+<li>Scale factor is the point scale factor of the output grid; convergence γ is positive east of the central meridian (true bearing = grid bearing + γ).</li>
+<li>Saved points stay on this device in this browser only.</li>
+</ul>
+</details>
+<footer>Check final legal-survey values against NRCan or Province of Nova Scotia tools. Version 1.1, 26 Nov 2026.</footer>
+</main>
+
+<script id="gridjson" type="application/json">null</script>
+<script id="grid64" type="application/octet-stream"></script>
+<script>
+// NS Field Converter – conversion core (no DOM). Krüger/Karney TM + NTv2 (NS778302).
+const SYSTEMS = [
+  { id: 'MTM 5', datum: 'NAD83', type: 'grid', cm: -64.5, k0: 0.9999, fe: 25500000 },
+  { id: 'MTM 4', datum: 'NAD83', type: 'grid', cm: -61.5, k0: 0.9999, fe: 24500000 },
+  { id: 'UTM 20', datum: 'NAD83', type: 'grid', cm: -63, k0: 0.9996, fe: 500000 },
+  { id: 'UTM 19', datum: 'NAD83', type: 'grid', cm: -69, k0: 0.9996, fe: 500000 },
+  { id: 'Lat/Long', datum: 'NAD83', type: 'geo' },
+  { id: 'ATS77 MTM 5', datum: 'ATS77', type: 'grid', cm: -64.5, k0: 0.9999, fe: 5500000 },
+  { id: 'ATS77 MTM 4', datum: 'ATS77', type: 'grid', cm: -61.5, k0: 0.9999, fe: 4500000 },
+  { id: 'ATS77 UTM 20', datum: 'ATS77', type: 'grid', cm: -63, k0: 0.9996, fe: 500000 },
+  { id: 'ATS77 UTM 19', datum: 'ATS77', type: 'grid', cm: -69, k0: 0.9996, fe: 500000 },
+  { id: 'ATS77 Lat/Long', datum: 'ATS77', type: 'geo' },
+];
+const ELL = { NAD83: { a: 6378137, rf: 298.257222101 }, ATS77: { a: 6378135, rf: 298.257 } };
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const sysById = id => SYSTEMS.find(s => s.id === id);
+
+const ellCache = {};
+function ell(datum) {
+  if (ellCache[datum]) return ellCache[datum];
+  const { a, rf } = ELL[datum], f = 1 / rf, n = f / (2 - f), e2 = f * (2 - f), e = Math.sqrt(e2);
+  const n2 = n * n, n3 = n2 * n, n4 = n3 * n, n5 = n4 * n, n6 = n5 * n;
+  const A = a / (1 + n) * (1 + n2 / 4 + n4 / 64 + n6 / 256);
+  const al = [0, n / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180 - 127 * n5 / 288 + 7891 * n6 / 37800,
+    13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440 + 281 * n5 / 630 - 1983433 * n6 / 1935360,
+    61 * n3 / 240 - 103 * n4 / 140 + 15061 * n5 / 26880 + 167603 * n6 / 181440,
+    49561 * n4 / 161280 - 179 * n5 / 168 + 6601661 * n6 / 7257600,
+    34729 * n5 / 80640 - 3418889 * n6 / 1995840, 212378941 * n6 / 319334400];
+  const be = [0, n / 2 - 2 * n2 / 3 + 37 * n3 / 96 - n4 / 360 - 81 * n5 / 512 + 96199 * n6 / 604800,
+    n2 / 48 + n3 / 15 - 437 * n4 / 1440 + 46 * n5 / 105 - 1118711 * n6 / 3870720,
+    17 * n3 / 480 - 37 * n4 / 840 - 209 * n5 / 4480 + 5569 * n6 / 90720,
+    4397 * n4 / 161280 - 11 * n5 / 504 - 830251 * n6 / 7257600,
+    4583 * n5 / 161280 - 108847 * n6 / 3991680, 20648693 * n6 / 638668800];
+  return (ellCache[datum] = { a, e, e2, A, al, be });
+}
+
+// forward TM: returns northing, easting, point scale factor k, convergence gamma (deg, + east of CM)
+function tmFwd(sys, lat, lon) {
+  const E_ = ell(sys.datum), { e, e2, A, al } = E_;
+  const phi = lat * D2R, lam = (lon - sys.cm) * D2R;
+  const tau = Math.tan(phi), sig = Math.sinh(e * Math.atanh(e * tau / Math.sqrt(1 + tau * tau)));
+  const taup = tau * Math.sqrt(1 + sig * sig) - sig * Math.sqrt(1 + tau * tau);
+  const xip = Math.atan2(taup, Math.cos(lam)), etap = Math.asinh(Math.sin(lam) / Math.sqrt(taup * taup + Math.cos(lam) ** 2));
+  let xi = xip, eta = etap, p = 1, q = 0;
+  for (let j = 1; j <= 6; j++) {
+    const c = Math.cos(2 * j * xip), s = Math.sin(2 * j * xip), ch = Math.cosh(2 * j * etap), sh = Math.sinh(2 * j * etap);
+    xi += al[j] * s * ch; eta += al[j] * c * sh; p += 2 * j * al[j] * c * ch; q += 2 * j * al[j] * s * sh;
+  }
+  const gamma = (Math.atan(taup / Math.sqrt(1 + taup * taup) * Math.tan(lam)) + Math.atan2(q, p)) * R2D;
+  const k = sys.k0 * (A / E_.a) * Math.sqrt(1 - e2 * Math.sin(phi) ** 2) * Math.sqrt(1 + tau * tau) /
+    Math.sqrt(taup * taup + Math.cos(lam) ** 2) * Math.hypot(p, q);
+  return { N: sys.k0 * A * xi, E: sys.fe + sys.k0 * A * eta, k, gamma };
+}
+
+function tmInv(sys, N, E) {
+  const { e, e2, A, be } = ell(sys.datum);
+  const xi = N / (sys.k0 * A), eta = (E - sys.fe) / (sys.k0 * A);
+  let xip = xi, etap = eta;
+  for (let j = 1; j <= 6; j++) {
+    xip -= be[j] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta);
+    etap -= be[j] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta);
+  }
+  const taup = Math.sin(xip) / Math.sqrt(Math.sinh(etap) ** 2 + Math.cos(xip) ** 2);
+  let t = taup;
+  for (let i = 0; i < 8; i++) {
+    const s = Math.sinh(e * Math.atanh(e * t / Math.sqrt(1 + t * t)));
+    const ts = t * Math.sqrt(1 + s * s) - s * Math.sqrt(1 + t * t);
+    const dt = (taup - ts) / Math.sqrt(1 + ts * ts) * (1 + (1 - e2) * t * t) / ((1 - e2) * Math.sqrt(1 + t * t));
+    t += dt; if (Math.abs(dt) < 1e-14) break;
+  }
+  return { lat: Math.atan(t) * R2D, lon: sys.cm + Math.atan2(Math.sinh(etap), Math.cos(xip)) * R2D };
+}
+
+// ---- NTv2 grid ----
+let GRID = null; // {S, E, dla, dlo, nr, nc, lat:Int16Array, lon:Int16Array, scale}
+function setGrid(g) { GRID = g; }
+const AREA = { s: 43.41, n: 47.08, w: -66.28, e: -59.73 };
+function gridShift(lat, lon) { // returns arc-seconds {dlat, dlon(+W)} or null
+  const g = GRID; if (!g) return null;
+  const x = (-lon * 3600 - g.E) / g.dlo, y = (lat * 3600 - g.S) / g.dla;
+  if (!(x >= 0 && y >= 0 && x < g.nc - 1 && y < g.nr - 1)) return null;
+  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j;
+  const v = (arr, jj, ii) => arr[jj * g.nc + ii] / g.scale;
+  const bil = arr => (1 - fx) * (1 - fy) * v(arr, j, i) + fx * (1 - fy) * v(arr, j, i + 1) + (1 - fx) * fy * v(arr, j + 1, i) + fx * fy * v(arr, j + 1, i + 1);
+  return { dlat: bil(g.lat), dlon: bil(g.lon) };
+}
+function ats77to83(lat, lon) {
+  const s = gridShift(lat, lon); if (!s) return null;
+  return { lat: lat + s.dlat / 3600, lon: lon - s.dlon / 3600 };
+}
+function nad83to77(lat, lon) {
+  let la = lat, lo = lon;
+  for (let i = 0; i < 6; i++) {
+    const s = gridShift(la, lo); if (!s) return null;
+    la = lat - s.dlat / 3600; lo = lon + s.dlon / 3600;
+  }
+  return { lat: la, lon: lo };
+}
+
+// ---- input parsing (same rules as the workbook) ----
+function parseAngle(raw, kind) { // kind 'lat' | 'lon'
+  const txt = String(raw ?? '').trim();
+  if (!txt) return { err: 'empty' };
+  if (/^[+-]?\d+(\.\d+)?$/.test(txt)) {
+    let v = parseFloat(txt);
+    if (kind === 'lon') return { value: -Math.abs(v), posWest: v > 0 };
+    return { value: v };
+  }
+  const up = txt.toUpperCase();
+  const neg = kind === 'lat' ? (/S/.test(up) || up.startsWith('-')) : !/E/.test(up);
+  const posWest = kind === 'lon' && !/[WE]/.test(up) && !up.startsWith('-');
+  const parts = up.replace(/[°º'′"″:NSEW\-]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 1 || parts.length > 3 || parts.some(p => !/^\+?\d+(\.\d+)?$/.test(p))) return { err: 'read' };
+  const [d, m = 0, s = 0] = parts.map(Number);
+  if (m >= 60 || s >= 60) return { err: 'ms' };
+  const v = d + m / 60 + s / 3600;
+  return { value: neg ? -v : v, posWest };
+}
+function parseBearing(raw) {
+  const t = String(raw ?? '').trim().toUpperCase();
+  if (!t) return null;
+  const q = /^[NS].*[EW]$/.test(t);
+  const mid = q ? t.slice(1, -1) : t;
+  const parts = mid.replace(/[°º'′"″:\-]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length || parts.length > 3 || parts.some(p => !/^\d+(\.\d+)?$/.test(p))) return { err: "Can't read the bearing" };
+  const [d, m = 0, s = 0] = parts.map(Number);
+  if (m >= 60 || s >= 60) return { err: 'Minutes or seconds of 60 or more' };
+  const th = d + m / 60 + s / 3600;
+  if (q && th > 90) return { err: 'Quadrant bearing over 90°' };
+  let az = th;
+  if (q) az = t[0] === 'N' ? (t.endsWith('E') ? th : 360 - th) : (t.endsWith('E') ? 180 - th : 180 + th);
+  return { az: ((az % 360) + 360) % 360 };
+}
+
+// ---- formatting ----
+function dms(deg, pos, neg, dp = 4) {
+  const tot = Math.round(Math.abs(deg) * 3600 * 10 ** dp) / 10 ** dp;
+  const d = Math.floor(tot / 3600), m = Math.floor((tot - d * 3600) / 60), s = tot - d * 3600 - m * 60;
+  const ss = s.toFixed(dp).padStart(dp ? 3 + dp : 2, '0');
+  return `${d}°${String(m).padStart(2, '0')}′${ss}″` + (pos ? ' ' + (deg >= 0 ? pos : neg) : '');
+}
+const azDms = (az, dp = 1) => dms(((az % 360) + 360) % 360, null, null, dp);
+function quadrant(az, dp = 1) {
+  const a = ((az % 360) + 360) % 360;
+  const th = a < 90 ? a : a < 180 ? 180 - a : a < 270 ? a - 180 : 360 - a;
+  return `${a < 90 || a >= 270 ? 'N' : 'S'} ${dms(th, null, null, dp)} ${a < 180 ? 'E' : 'W'}`;
+}
+
+// ---- conversion with checks ----
+function convert(fromId, v1, v2, toId) {
+  const out = { msgs: [] };
+  const bad = m => { out.error = m; return out; };
+  const warn = m => out.msgs.push(m);
+  const fs = sysById(fromId), ts = sysById(toId);
+  if (!fs || !ts) return bad('Choose both systems');
+  if (String(v1 ?? '').trim() === '' || String(v2 ?? '').trim() === '') return bad('Enter both values');
+  let lat, lon;
+  if (fs.type === 'geo') {
+    const a = parseAngle(v1, 'lat'), b = parseAngle(v2, 'lon');
+    if (a.err === 'ms' || b.err === 'ms') return bad('Minutes or seconds of 60 or more');
+    if (a.err) return bad("Can't read the latitude");
+    if (b.err) return bad("Can't read the longitude");
+    lat = a.value; lon = b.value; out.posWest = b.posWest;
+  } else {
+    const N = Number(String(v1).replace(/[ ,]/g, '')), E = Number(String(v2).replace(/[ ,]/g, ''));
+    if (!isFinite(N) || !isFinite(E)) return bad('Enter northing and easting as numbers');
+    if (Math.abs(E - fs.fe) > 400000) return bad(`Easting doesn't fit ${fs.id} (expected about ${fs.fe.toLocaleString('en-CA')})`);
+    if (N < 4750000 || N > 5250000) return bad('Northing outside Nova Scotia range');
+    ({ lat, lon } = tmInv(fs, N, E));
+    if (Math.abs(lon - fs.cm) > 4.5) warn(`Point is ${Math.abs(lon - fs.cm).toFixed(1)}° from the ${fs.id} central meridian – check the zone`);
+  }
+  if (lat < 40 || lat > 50 || lon < -70 || lon > -55) return bad('Outside the Maritimes – values swapped or wrong system?');
+  out.src = { lat, lon };
+  let tl = { lat, lon };
+  if (fs.datum !== ts.datum) {
+    if (!GRID) return bad('ATS77 ↔ NAD83 needs the NS778302 grid file – load it under “ATS77 grid file” below');
+    tl = fs.datum === 'ATS77' ? ats77to83(lat, lon) : nad83to77(lat, lon);
+    if (!tl) return bad('Outside the NTv2 grid (needed for ATS77 ↔ NAD83)');
+    if (lat < AREA.s || lat > AREA.n || lon < AREA.w || lon > AREA.e) warn("Outside the ATS77 grid's area of use (NS onshore)");
+    out.datumShift = true;
+  }
+  out.lat = tl.lat; out.lon = tl.lon;
+  if (ts.type === 'grid') {
+    const r = tmFwd(ts, tl.lat, tl.lon);
+    Object.assign(out, { N: r.N, E: r.E, k: r.k, gamma: r.gamma });
+    const d = Math.abs(tl.lon - ts.cm);
+    if (d > 4.5) warn(`Point is ${d.toFixed(1)}° from the ${ts.id} central meridian – large scale distortion`);
+    const z = ts.id.replace('ATS77 ', '');
+    if (z === 'MTM 5' && tl.lon > -63) warn('East of 63°W – normally MTM zone 4');
+    if (z === 'MTM 4' && tl.lon < -63) warn('West of 63°W – normally MTM zone 5');
+    if (z === 'UTM 20' && tl.lon < -66) warn('West of 66°W – strictly UTM zone 19');
+    if (z === 'UTM 19' && tl.lon > -66) warn('East of 66°W – normally UTM zone 20');
+  }
+  return out;
+}
+
+// parse an NTv2 .GSB (single sub-grid, little- or big-endian) into the grid object used above
+function parseGSB(buf) {
+  const dv = new DataView(buf), txt = (o, n = 8) => String.fromCharCode(...new Uint8Array(buf, o, n)).trim();
+  if (txt(0) !== 'NUM_OREC') throw new Error('Not an NTv2 grid file');
+  const le = dv.getInt32(8, true) === 11, i32 = o => dv.getInt32(o, le), f64 = o => dv.getFloat64(o, le);
+  const ov = {}; for (let r = 0; r < 11; r++) ov[txt(r * 16)] = r * 16 + 8;
+  if (i32(ov.NUM_FILE) !== 1) throw new Error('Expected a single sub-grid');
+  const from = txt(ov.DATUM_F), to = txt(ov.DATUM_T);
+  const sh = {}; for (let r = 0; r < 11; r++) sh[txt(176 + r * 16)] = 176 + r * 16 + 8;
+  const S = f64(sh.S_LAT), Nn = f64(sh.N_LAT), E = f64(sh.E_LONG), W = f64(sh.W_LONG), dla = f64(sh.LAT_INC), dlo = f64(sh.LONG_INC), cnt = i32(sh.GS_COUNT);
+  const nr = Math.round((Nn - S) / dla) + 1, nc = Math.round((W - E) / dlo) + 1;
+  if (nr * nc !== cnt) throw new Error('Grid size does not match its header');
+  const lat = new Float32Array(cnt), lon = new Float32Array(cnt), o0 = 352;
+  for (let k = 0; k < cnt; k++) { lat[k] = dv.getFloat32(o0 + k * 16, le); lon[k] = dv.getFloat32(o0 + k * 16 + 4, le); }
+  return { S, E, dla, dlo, nr, nc, lat, lon, scale: 1, name: txt(sh.SUB_NAME), from, to };
+}
+
+if (typeof module !== 'undefined') module.exports = { SYSTEMS, tmFwd, tmInv, setGrid, gridShift, ats77to83, nad83to77, parseAngle, parseBearing, dms, azDms, quadrant, convert, sysById, parseGSB };
+
+</script>
+<script>
+{
+const $ = id => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+// grid: embedded (single-file build) or loaded once from the device (installable build)
+const gstat = m => { $('gstat').textContent = m; };
+const idb = (mode, fn) => new Promise((res, rej) => { try {
+  const o = indexedDB.open('nsfc', 1); o.onupgradeneeded = () => o.result.createObjectStore('g');
+  o.onsuccess = () => { const tx = o.result.transaction('g', mode); const st = tx.objectStore('g'); const r = fn(st); tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); };
+  o.onerror = () => rej(o.error); } catch (e) { rej(e); } });
+let embedded = false;
+try {
+  const raw = $('gridjson').textContent.trim();
+  if (raw && raw !== 'null') {
+    const h = JSON.parse(raw), bin = atob($('grid64').textContent.trim());
+    const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const n = h.nr * h.nc, all = new Int16Array(u8.buffer);
+    setGrid({ ...h, lat: all.subarray(0, n), lon: all.subarray(n, 2 * n) }); embedded = true;
+    gstat('Built in: NS778302 (ATS77 → NAD83(CSRS) v6), 541 × 961 nodes at 30″.'); $('gfile').closest('label') ; $('gfile').parentElement.querySelector('label').style.display = 'none'; $('gfile').style.display = 'none';
+  }
+} catch (e) { console.log('grid failed', e); }
+const standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const where = standalone ? 'home-screen app' : 'browser tab';
+const useGrid = (g, how) => { setGrid(g); gstat(`Loaded${how}: ${g.name || 'grid'} (${g.from} → ${g.to}), ${g.nr} × ${g.nc} nodes at ${g.dla}″. ATS77 conversions are available offline.`); };
+const GKEY = './__nsfc_grid__.gsb', GCACHE = 'nsfc-grid';
+async function saveGrid(buf) {
+  const done = [];
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+  try { const c = await caches.open(GCACHE); await c.put(GKEY, new Response(buf, { headers: { 'Content-Type': 'application/octet-stream' } })); done.push('app cache'); } catch (e) {}
+  try { await idb('readwrite', st => st.put(buf, 'gsb')); done.push('database'); } catch (e) {}
+  return done;
+}
+async function loadSavedGrid() {
+  try { const c = await caches.open(GCACHE), r = await c.match(GKEY); if (r) return { buf: await r.arrayBuffer(), from: 'app cache' }; } catch (e) {}
+  try { const buf = await idb('readonly', st => st.get('gsb')); if (buf && buf.byteLength) return { buf, from: 'database' }; } catch (e) {}
+  return null;
+}
+if (!embedded) {
+  gstat(`Not loaded yet in this ${where}. ATS77 conversions need it; everything else works without it.` +
+    (standalone ? '' : ' Tip: on iPhone the home-screen app keeps its own storage – open the app from your home screen and load the grid there.'));
+  loadSavedGrid().then(s => { if (s) { useGrid(parseGSB(s.buf), ` from this device (${s.from}, ${where})`); run(); } }).catch(() => {});
+}
+$('gfile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const buf = await f.arrayBuffer(), g = parseGSB(buf);
+    if (!/ATS77/i.test(g.from)) throw new Error(`This grid converts from ${g.from}, not ATS77`);
+    useGrid(g, ` (${where})`); run();
+    const done = await saveGrid(buf);
+    gstat($('gstat').textContent + (done.length ? ` Saved on this device (${done.join(' + ')}).` : ' ✗ This browser would not save it – it will need loading again next time.'));
+  } catch (err) { gstat('✗ ' + err.message); }
+});
+if ('serviceWorker' in navigator && !embedded) { try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {} }
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const opts = SYSTEMS.map(s => s.id);
+const groups = [['NAD83(CSRS) – NS 2010', opts.slice(0, 5)], ['ATS77', opts.slice(5)]];
+for (const sel of [$('from'), $('to')]) sel.innerHTML = groups.map(([g, l]) => `<optgroup label="${g}">${l.map(o => `<option>${o}</option>`).join('')}</optgroup>`).join('');
+const last = store.get('nsfc.last', { name: '27005', from: 'MTM 5', to: 'UTM 20', v1: '4972126.2954', v2: '25447127.3588' });
+$('name').value = last.name; $('from').value = last.from; $('to').value = last.to; $('v1').value = last.v1; $('v2').value = last.v2;
+
+const f3 = x => x.toLocaleString('en-CA', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const datumName = s => sysById(s).datum === 'ATS77' ? 'ATS77' : 'NAD83(CSRS) v6, 2010.0';
+let cur = null;
+
+function labels() {
+  const geo = sysById($('from').value).type === 'geo';
+  $('l1').textContent = geo ? 'Latitude' : 'Northing (m)'; $('l2').textContent = geo ? 'Longitude' : 'Easting (m)';
+  for (const id of ['v1', 'v2']) $(id).setAttribute('inputmode', geo ? 'text' : 'decimal');
+  $('v1').placeholder = geo ? '44 53 13.8147 N' : '4972126.295'; $('v2').placeholder = geo ? '65 10 09.5833 W' : sysById($('from').value).fe.toLocaleString('en-CA').replace(/,/g, ' ');
+  $('hint').textContent = geo ? 'Decimal degrees or DMS. Longitude is read as West unless it has an E.' :
+    `Full easting, about ${sysById($('from').value).fe.toLocaleString('en-CA')} at the central meridian.`;
+}
+
+function run() {
+  labels();
+  const fs = $('from').value, ts = $('to').value, v1 = $('v1').value, v2 = $('v2').value;
+  store.set('nsfc.last', { name: $('name').value, from: fs, to: ts, v1, v2 });
+  const r = convert(fs, v1, v2, ts); cur = { r, fs, ts, v1, v2, name: $('name').value.trim() };
+  const tsys = sysById(ts);
+  $('rsys').textContent = `${fs} → ${ts}`; $('rdat').textContent = datumName(ts);
+  let figs = '', sub = '';
+  if (r.error) {
+    figs = `<div class="fig-l">Result</div><div class="fig-n sm">—</div>`;
+  } else if (tsys.type === 'grid') {
+    figs = `<div class="fig-l">Northing</div><div class="fig-n">${f3(r.N)}</div><div class="fig-l">Easting</div><div class="fig-n">${f3(r.E)}</div>`;
+    sub = `<div><b>Latitude</b>${dms(r.lat, 'N', 'S')}</div><div><b>Longitude</b>${dms(r.lon, 'E', 'W')}</div>
+      <div><b>Scale factor</b>${r.k.toFixed(8)} (${((r.k - 1) * 1e6).toFixed(1).replace('-', '−')} ppm)</div>
+      <div><b>Convergence γ</b>${r.gamma < 0 ? '−' : '+'}${azDms(Math.abs(r.gamma), 2)}</div>`;
+  } else {
+    figs = `<div class="fig-l">Latitude</div><div class="fig-n sm">${dms(r.lat, 'N', 'S')}</div><div class="fig-l">Longitude</div><div class="fig-n sm">${dms(r.lon, 'E', 'W')}</div>`;
+    sub = `<div><b>Latitude (°)</b>${r.lat.toFixed(9)}</div><div><b>Longitude (°)</b>${r.lon.toFixed(9)}</div>`;
+  }
+  $('figs').innerHTML = figs; $('sub').innerHTML = sub;
+  const m = r.error ? [`<div class="msg x">✗ ${esc(r.error)}</div>`] :
+    (r.msgs.length ? r.msgs.map(x => `<div class="msg w">⚠ ${esc(x)}</div>`) : [`<div class="msg ok">✓ OK${r.posWest ? ' (longitude read as West)' : ''}${r.datumShift ? ' · datum shifted with NS778302' : ''}</div>`]);
+  if (!r.error && r.msgs.length && r.posWest) m.push('<div class="msg ok">✓ Longitude read as West</div>');
+  $('msgs').innerHTML = m.join('');
+  table(r); ruler();
+}
+
+function table(r) {
+  const tb = $('all').tBodies[0];
+  if (r.error) { tb.innerHTML = `<tr><td colspan="7" class="empty">Enter a valid point to see it in every system.</td></tr>`; return; }
+  const srcDat = sysById(cur.fs).datum;
+  tb.innerHTML = SYSTEMS.map(s => {
+    const x = convert(cur.fs, cur.v1, cur.v2, s.id);
+    if (x.error) return `<tr><td>${s.id}</td><td colspan="6" data-l="">${esc(x.error)}</td></tr>`;
+    const isCur = s.id === cur.ts ? ' class="cur"' : '';
+    const g = s.type === 'grid';
+    return `<tr${isCur}><td class="nm" data-l="System">${s.id}</td><td data-l="Northing">${g ? f3(x.N) : ''}</td><td data-l="Easting">${g ? f3(x.E) : ''}</td>
+      <td data-l="Latitude">${dms(x.lat, 'N', 'S')}</td><td data-l="Longitude">${dms(x.lon, 'E', 'W')}</td><td class="sf" data-l="Scale factor">${g ? x.k.toFixed(8) : ''}</td>
+      <td class="bt" data-l=""><button class="mini" data-to="${s.id}">Show</button></td></tr>`;
+  }).join('');
+}
+$('all').addEventListener('click', e => { const b = e.target.closest('button[data-to]'); if (b) { $('to').value = b.dataset.to; run(); $('read').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } });
+
+// zone ruler
+const TOWNS = [['Yarmouth', -66.12], ['Digby', -65.76], ['Shelburne', -65.32], ['Halifax', -63.57], ['Sydney', -60.19]];
+function ruler() {
+  const s = $('rs'), W = s.clientWidth, H = s.clientHeight; if (!W) return;
+  const L0 = -67.2, L1 = -59.4, pad = 14, X = lon => pad + (lon - L0) / (L1 - L0) * (W - 2 * pad);
+  const yU = 22, yM = 58, bh = 30, small = W < 520;
+  const band = (y, a, b, lab, cm, fill) => `<rect x="${X(a)}" y="${y}" width="${X(b) - X(a)}" height="${bh}" fill="${fill}" rx="3"/>` +
+    (cm ? `<line x1="${X(cm)}" x2="${X(cm)}" y1="${y}" y2="${y + bh}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".5"/>` : '') +
+    `<text x="${(X(Math.max(a, L0)) + X(Math.min(b, L1))) / 2}" y="${y + 20}" text-anchor="middle">${lab}</text>`;
+  const yA = 'color-mix(in srgb,var(--y) 70%,transparent)', yB = 'color-mix(in srgb,var(--y) 32%,transparent)';
+  let g = band(yU, L0, -66, 'UTM 19', null, yB) + band(yU, -66, -60, small ? 'UTM 20' : 'UTM 20 (CM 63°W)', -63, yA) + band(yU, -60, L1, '21', null, yB) +
+    band(yM, L0, -63, small ? 'MTM 5' : 'MTM 5 (CM 64.5°W)', -64.5, yA) + band(yM, -63, L1, small ? 'MTM 4' : 'MTM 4 (CM 61.5°W)', -61.5, yB);
+  const ticks = small ? [-66, -63, -60] : [-67, -66, -65, -64, -63, -62, -61, -60];
+  g += ticks.map(t => `<line x1="${X(t)}" x2="${X(t)}" y1="${yM + bh}" y2="${yM + bh + 4}" stroke="var(--ink)"/>`).join('');
+  g += ticks.map(t => `<text x="${X(t)}" y="${H - 6}" text-anchor="middle" fill="var(--soft)">${-t}°W</text>`).join('');
+  g += TOWNS.map(([n, lo], i) => { const ty = yM + bh + (i % 2 ? 42 : 26); const nm = small && n === 'Shelburne' ? 'Shel.' : small && n === 'Yarmouth' ? 'Yarm.' : n;
+    return `<line x1="${X(lo)}" x2="${X(lo)}" y1="${yM + bh + 4}" y2="${ty - 12}" stroke="var(--soft)" opacity=".6"/><text x="${X(lo)}" y="${ty}" text-anchor="middle" fill="var(--soft)">${nm}</text>`; }).join('');
+  if (cur && !cur.r.error) {
+    const lo = cur.r.src.lon, x = X(Math.min(L1, Math.max(L0, lo)));
+    g += `<line x1="${x}" x2="${x}" y1="8" y2="${yM + bh + 4}" stroke="var(--red)" stroke-width="2.5"/><circle cx="${x}" cy="8" r="5" fill="var(--red)"/>`;
+    const right = x < W - 150;
+    g += `<text x="${x + (right ? 10 : -10)}" y="12" text-anchor="${right ? 'start' : 'end'}" font-weight="700">${esc(cur.name || 'Point')} · ${Math.abs(lo).toFixed(3)}°W</text>`;
+  }
+  s.innerHTML = g;
+}
+const ro = new ResizeObserver(ruler); ro.observe($('ruler'));
+
+// saved points
+function savedList() {
+  const pts = store.get('nsfc.points', []);
+  $('saved').innerHTML = pts.length ? pts.map((p, i) => `<div class="pt"><div><b>${esc(p.name || 'Point')}</b> <small>${esc(p.fs)}: ${esc(p.v1)}, ${esc(p.v2)} → ${esc(p.ts)}</small></div>
+    <button class="mini" data-load="${i}">Load</button><button class="mini" data-del="${i}" aria-label="Delete">×</button></div>`).join('')
+    : '<p class="empty">No saved points yet. Use “Save point” to keep a point on this device.</p>';
+}
+$('saved').addEventListener('click', e => {
+  const pts = store.get('nsfc.points', []), b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.load) { const p = pts[+b.dataset.load]; $('name').value = p.name; $('from').value = p.fs; $('to').value = p.ts; $('v1').value = p.v1; $('v2').value = p.v2; run(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  if (b.dataset.del) { pts.splice(+b.dataset.del, 1); store.set('nsfc.points', pts); savedList(); }
+});
+const toast = t => { $('toast').textContent = t; clearTimeout(toast.h); toast.h = setTimeout(() => $('toast').textContent = '', 2200); };
+async function copy(text, msg) { try { await navigator.clipboard.writeText(text); toast(msg); } catch (e) { toast('Copy not allowed here – select the text instead'); } }
+function resultText() {
+  const { r, ts } = cur; if (r.error) return '';
+  return sysById(ts).type === 'grid' ? `${cur.name ? cur.name + ' ' : ''}${ts} N ${r.N.toFixed(3)} E ${r.E.toFixed(3)}`
+    : `${cur.name ? cur.name + ' ' : ''}${ts} ${dms(r.lat, 'N', 'S')} ${dms(r.lon, 'E', 'W')}`;
+}
+$('copy').onclick = () => cur && !cur.r.error && copy(resultText(), 'Copied');
+$('save').onclick = () => {
+  if (!cur || cur.r.error) { toast('Nothing to save yet'); return; }
+  const pts = store.get('nsfc.points', []); pts.unshift({ name: cur.name, fs: cur.fs, ts: cur.ts, v1: cur.v1, v2: cur.v2 });
+  store.set('nsfc.points', pts.slice(0, 100)); savedList(); toast('Saved on this device');
+};
+$('csv').onclick = () => {
+  const pts = store.get('nsfc.points', []); if (!pts.length) { toast('No saved points'); return; }
+  const rows = [['point', 'from', 'v1', 'v2', 'to', 'N_or_lat', 'E_or_lon', 'check']];
+  for (const p of pts) {
+    const r = convert(p.fs, p.v1, p.v2, p.ts), g = sysById(p.ts).type === 'grid';
+    rows.push([p.name, p.fs, p.v1, p.v2, p.ts, r.error ? '' : g ? r.N.toFixed(3) : r.lat.toFixed(9), r.error ? '' : g ? r.E.toFixed(3) : r.lon.toFixed(9), r.error || (r.msgs.join('; ') || 'OK')]);
+  }
+  copy(rows.map(r => r.map(v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v).join(',')).join('\n'), `Copied ${pts.length} points`);
+};
+$('clear').onclick = () => { if ($('clear').dataset.arm) { store.set('nsfc.points', []); savedList(); $('clear').textContent = 'Clear saved points'; delete $('clear').dataset.arm; }
+  else { $('clear').dataset.arm = 1; $('clear').textContent = 'Tap again to clear'; setTimeout(() => { delete $('clear').dataset.arm; $('clear').textContent = 'Clear saved points'; }, 3000); } };
+$('swap').onclick = () => {
+  const r = cur && cur.r, ts = $('to').value, fs = $('from').value;
+  if (r && !r.error) {
+    if (sysById(ts).type === 'grid') { $('v1').value = r.N.toFixed(4); $('v2').value = r.E.toFixed(4); }
+    else { $('v1').value = r.lat.toFixed(10); $('v2').value = r.lon.toFixed(10); }
+  }
+  $('from').value = ts; $('to').value = fs; run();
+};
+$('more').onclick = () => $('read').classList.toggle('open');
+for (const id of ['from', 'to']) $(id).addEventListener('change', run);
+for (const id of ['v1', 'v2', 'name']) $(id).addEventListener('input', run);
+run(); savedList();
+}
+</script>
+</body>
+</html>
